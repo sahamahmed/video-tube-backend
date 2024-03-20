@@ -94,15 +94,17 @@ const addComment = asyncHandler(async (req, res) => {
     .json(new ApiResponse(201, comment, "comment created successfully"));
 });
 
+// only allow owner to update
 const updateComment = asyncHandler(async (req, res) => {
   const { content } = req.body;
   const { commentId } = req.params;
+  const userId = req.user._id;
 
   if (!content) {
     throw new ApiError(400, "Content is a required field");
   }
-  const comment = await Comment.findByIdAndUpdate(
-    commentId,
+  const comment = await Comment.findOneAndUpdate(
+    { _id:commentId, owner: userId }, 
     {
       content,
     },
@@ -110,7 +112,7 @@ const updateComment = asyncHandler(async (req, res) => {
   );
 
   if (!comment) {
-    throw new ApiError("comment does not exist");
+    throw new ApiError(404 , "comment does not exist or you donot have permission to update it");
   }
   return res
     .status(201)
@@ -118,19 +120,16 @@ const updateComment = asyncHandler(async (req, res) => {
 });
 
 const deleteComment = asyncHandler(async (req, res) => {
-    // TODO: delete a comment
-    // I thought that delete rights should only be given when user is the owner to prevent non-owners from deleting anyones comment
+    // delete rights should only be given when user is the owner to prevent non-owners from deleting anyones comment
     const { commentId } = req.params;
     const userId = req.user._id;
-    const comment = await Comment.findOne({ _id: commentId, owner: userId });
+    const comment = await Comment.findOneAndDelete({ _id: commentId, owner: userId });
 
     if (!comment) {
         throw new ApiError(404, "Comment does not exist or you do not have permission to delete it");
     }
 
-    await Comment.findByIdAndDelete(commentId);
-
-    return res.status(200).json(new ApiResponse(200 , {} , "comment delete successful"));
+    return res.status(200).json(new ApiResponse(200 , comment , "comment delete successful"));
 });
 
 
