@@ -5,17 +5,19 @@ import { Like } from "../models/like.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
+import { User } from "../models/user.model.js";
 
 const getChannelStats = asyncHandler(async (req, res) => {
-  // TODO: Get the channel stats like total video views, total subscribers, total videos, total likes etc.
-  const userId = req.user?._id;
+  const {userId} = req.params;
   const Allvideos = await Video.find({ owner: userId });
   const stats = {};
   if (!Allvideos) {
     throw new ApiError(400, "unable to find videos");
   }
 
-  //1.Total video views
+  stats.ownerInfo = await User.findById(userId)
+
+  //1.Total video views 
   let totalViews = 0;
   Allvideos.forEach((video) => {
     totalViews += video.views;
@@ -52,8 +54,13 @@ const getChannelStats = asyncHandler(async (req, res) => {
              }
          },
   ]);
-  // totalLikes aik array ki form m arha tha isliye sirf first object return krdia
-  stats.NumberOfLikes = totalLikes[0];
+  if (!totalLikes[0]) {
+    stats.NumberOfLikes = {
+      totalLikes: 0,
+    };
+  }else{
+stats.NumberOfLikes = totalLikes[0] 
+ }
 
   //final response
   return res
@@ -62,7 +69,7 @@ const getChannelStats = asyncHandler(async (req, res) => {
 });
 
 const getChannelVideos = asyncHandler(async (req, res) => {
-  const userId = req.user?._id;
+  const {userId} = req.params;
   const Allvideos = await Video.find({ owner: userId });
   if (!Allvideos) {
     throw new ApiError(400, "unable to find videos");

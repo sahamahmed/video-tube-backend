@@ -5,23 +5,22 @@ import {ApiError} from "../utils/ApiError.js"
 import {ApiResponse} from "../utils/ApiResponse.js"
 import {asyncHandler} from "../utils/asyncHandler.js"
  
-
+ 
 const toggleSubscription = asyncHandler(async (req, res) => {  
     const {channelId} = req.params
-    const subscriberId = req.user._id
-    let subscriptionstatus = ""
-    // TODO: toggle subscription
+    const subscriberId = req.user._id   
+    let subscriptionstatus   
     const subscribed = await Subscription.findOne({subscriber: subscriberId , channel: channelId})
     if(subscribed){
         await Subscription.findByIdAndDelete(subscribed._id)
-        subscriptionstatus = "unsubscribed"
+        subscriptionstatus = 0
         console.log("if ran")
     }else{
-        await Subscription.create({
+        await Subscription.create({ 
           subscriber: subscriberId,
           channel: channelId,
         });
-        subscriptionstatus = "subscribed"
+        subscriptionstatus = 1
         console.log("else ran")
     }
     return res.status(200).json( new ApiResponse(200 , subscriptionstatus, "subscription toggled successfully"))

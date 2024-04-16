@@ -6,13 +6,14 @@ import {ApiResponse} from "../utils/ApiResponse.js"
 import {asyncHandler} from "../utils/asyncHandler.js"
 import {uploadOnCloudinary} from "../utils/cloudinary.js"
 import { v2 as cloudinary } from "cloudinary";
+import { Like } from "../models/like.model.js"
 
 const getAllVideos = asyncHandler(async (req, res) => {
-  let { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query;
+  let { page = 1, limit = 6, query, sortBy, sortType, userId } = req.query;
   page = parseInt(page);
   limit = parseInt(limit);
-  let filter = {};
-  let sort = {};
+  let filter = { isPublished: true };
+  let sort = {};            
 
   if (query) {
     filter.title = { $regex: query, $options: "i" };
@@ -27,26 +28,16 @@ const getAllVideos = asyncHandler(async (req, res) => {
   }
 
   const startIndex = (page - 1) * limit;
-  const endIndex = page * limit;
+   const endIndex = page * limit;
 
   const results = {};
 
   results.totalCount = await Video.countDocuments(filter);
 
-  if (endIndex < results.totalCount) {
-    results.next = {
-      page: page + 1,
-    };
-  }
-
-  if (startIndex > 0) {
-    results.previous = {
-      page: page - 1,
-    };
-  }
 
   try {
     results.videos = await Video.aggregate([
+   
       { $match: filter },
       { $sort: sort },
       { $skip: startIndex },
@@ -73,16 +64,18 @@ const getAllVideos = asyncHandler(async (req, res) => {
           owner: {
             $first: "$owner",
           },
+      
         },
       },
       {
         $project: {
           title: 1,
-          videoFile: 1,
           thumbnail: 1,
+          description: 1,
           owner: 1,
           views: 1,
           duration: 1,
+          createdAt:1 
         },
       },
     ]);
@@ -157,14 +150,59 @@ const getVideoById = asyncHandler(async (req, res) => {
     const { videoId } = req.params
     const userId = req.user?._id
 
-    const videoExists = await Video.findOne({ _id: videoId, isPublished: true });
-
+    // const videoExists = await Video.findOne();
+    const videoExists = await Video.aggregate([
+      {
+        $match: {
+          _id: new mongoose.Types.ObjectId(videoId),
+          isPublished: true,
+        },
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "owner",
+          foreignField: "_id",
+          as: "owner",
+          pipeline: [
+            {
+              $project: {
+                fullName: 1,
+                username: 1,
+                avatar: 1,
+              },
+            },
+          ],
+        },
+      },
+      {
+        $lookup: {
+          from: "likes",
+          localField: "_id",
+          foreignField: "video",
+          as: "likes",
+        },
+      },
+      {
+        $addFields: {
+          owner: {
+            $first: "$owner",
+          },
+          likes: {
+            $size: "$likes",
+          },
+        },
+      },
+    ]);
     if (!videoExists) {
       throw new ApiError(400, "Video does not exist or is not published");
     }
+    const isLiked = await Like.find({
+      likedBy: userId,
+      video: new mongoose.Types.ObjectId(videoId),
+    });
 
   const isVideoWatched = req.user?.watchHistory.includes(videoId)
-
     await User.findByIdAndUpdate(userId, {
       $addToSet: { watchHistory: videoId },
     } , {new:true});
@@ -181,8 +219,14 @@ const getVideoById = asyncHandler(async (req, res) => {
         throw new ApiError(400 , "video doesnot exist")
      }
      return res
-     .status(200)
-     .json(new ApiResponse(201 , video , "Video fetched successfull and user watch history updated"))
+       .status(200)
+       .json(
+         new ApiResponse(
+           201,
+           [ ...video, {isLiked} ],
+           "Video fetched successfull and user watch history updated"
+         )
+       );
 })
 
 //allow only owner to update, delete video and toggle isPublished

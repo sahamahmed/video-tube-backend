@@ -26,20 +26,59 @@ const createPlaylist = asyncHandler(async (req, res) => {
 })
 
 const getUserPlaylists = asyncHandler(async (req, res) => {
-    const {userId} = req.params
-    if (!userId) {
-        throw new ApiError(400 , " userId not provided")
-    }
+  const { userId } = req.params;
+  if (!userId) {
+    throw new ApiError(400, "userId not provided");
+  }
 
-    const playlists = await Playlist.find({owner: userId})
-    if (!playlists) {
-        throw new ApiError(404 , " unable to find playlist")
-    }
-     return res
-   .status(200)
-   .json( new ApiResponse(200 , playlists , `Playlists for ${req.user.username} fetched successfully`))
-    
-})
+  const playlists = await Playlist.aggregate([
+    {
+      $match: {
+        owner: new mongoose.Types.ObjectId(userId),
+      },
+    },
+    {
+      $lookup: {
+        from: "videos",
+        localField: "videos",
+        foreignField: "_id",
+        as: "videos",
+        pipeline: [
+          {
+            $project: {
+              thumbnail: 1
+            }
+          }
+        ]  
+      },
+    },
+    {
+      $project: {
+        name: 1,
+        description: 1,
+        owner: 1,
+        createdAt: 1,
+        updatedAt: 1,
+        videos: 1
+      },
+    },
+  ]);
+
+  if (!playlists) {
+    throw new ApiError(404, "Unable to find playlists");
+  }
+
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        playlists,
+        `Playlists for ${req.user.username} fetched successfully`
+      )
+    );
+});
+
 
 //only those videos will be displayed that are Published
 const getPlaylistById = asyncHandler(async (req, res) => {
@@ -63,16 +102,48 @@ const getPlaylistById = asyncHandler(async (req, res) => {
           pipeline: [
             {
               $match: {
-                isPublished: true, // Filter videos by isPublished field
+                isPublished: true,
               },
             },
             {
+              $lookup: {
+          from: "users",
+          localField: "owner",
+          foreignField: "_id",
+          as: "owner",
+          pipeline: [
+            {
               $project: {
-                title: 1,
+                username: 1
+              }
+            }  
+          ]
+            }
+          },
+            {
+              $project: {
+                title: 1,   
                 thumbnail: 1,
-                videoFile: 1,
                 duration: 1,
+                createdAt: 1,
                 views: 1,
+                owner: 1
+              },
+            },
+          ],
+        },
+      },
+      {
+        $lookup: {
+          from: "users",
+          localField: "owner",
+          foreignField: "_id",
+          as: "owner",
+          pipeline: [
+            {
+              $project: {
+                username: 1,
+                avatar:1
               },
             },
           ],
@@ -85,7 +156,7 @@ const getPlaylistById = asyncHandler(async (req, res) => {
     return res
       .status(200)
       .json(new ApiResponse(200, playlist, "Playlist fetched successfully"));
-})  
+})   
 
 const addVideoToPlaylist = asyncHandler(async (req, res) => {
     const {playlistId, videoId} = req.params
@@ -143,7 +214,7 @@ const deletePlaylist = asyncHandler(async (req, res) => {
         404,
         "Playlist not found or you do not have access to delete video from playlist"
       );
-    }
+    }  
 
     return res
       .status(200)

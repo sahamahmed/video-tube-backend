@@ -3,7 +3,7 @@ import {
     deleteVideo,
     getAllVideos,
     getVideoById,
-    publishAVideo,
+    publishAVideo,  
     togglePublishStatus,
     updateVideo,
 } from "../controllers/video.controller.js"
