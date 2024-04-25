@@ -1,18 +1,14 @@
 {
-  "name": "chai-backend",
+  "name": "videotube-backend",
   "version": "1.0.0",
-  "description": "a backend at chai aur code channel - youtube",
+  "description": "a video sharing platform",
   "type": "module",
   "main": "index.js",
   "scripts": {
+    "start": "node src/index.js",
     "dev": "nodemon -r dotenv/config --experimental-json-modules src/index.js"
   },
-  "keywords": [
-    "javascript",
-    "backend",
-    "chai"
-  ],
-  "author": "Hitesh Choudhary",
+  "author": "Saham Ahmed",
   "license": "ISC",
   "devDependencies": {
     "nodemon": "^3.0.1",

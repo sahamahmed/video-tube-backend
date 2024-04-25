@@ -1,0 +1,30 @@
+version: '3'
+
+services:
+  mongo_db:
+    container_name: database_container
+    image: mongo:latest
+    restart: always
+    volumes:
+      - mongo_db:/data/db
+
+  app:
+    build: .
+    ports:
+      - 4000:8000
+    environment:
+      - PORT=8000
+      - MONGODB_URI=mongodb://mongo_db:27017/videotube
+      - CORS_ORIGIN=http://localhost:3000
+      - ACCESS_TOKEN_SECRET=saham123
+      - ACCESS_TOKEN_EXPIRY=1d
+      - REFRESH_TOKEN_SECRET=12345
+      - REFRESH_TOKEN_EXPIRY=10d
+      - CLOUDINARY_CLOUD_NAME=dviqg4rbd
+      - CLOUDINARY_API_KEY=936366457987438
+      - CLOUDINARY_API_SECRET=6XBHRNz2Z6c6dRIiAAPFsT-xYAs
+    depends_on:
+      - mongo_db
+
+volumes:
+  mongo_db: {}
