@@ -203,7 +203,7 @@ const getVideoById = asyncHandler(async (req, res) => {
     });
 
   const isVideoWatched = req.user?.watchHistory.includes(videoId)
-    await User.findByIdAndUpdate(userId, {
+    await User.findByIdAndUpdate(userId, {  
       $addToSet: { watchHistory: videoId },
     } , {new:true});
 
